@@ -23,8 +23,7 @@ As a replacement for Fluid's view helpers, this package contains Flow-specific
 Twig functions: `uri_action()`, `uri_resource()`, `csrf_token()`, `csrf_field()`, `translate()`.
 
 Compiled templates are cached using Flow's cache framework. During development,
-Twig files are also watched for changes using Flow's file monitor and caches
-are flushed automatically.
+Twig files are automatically recompiled on every request.
 
 The `app` global variable provides the current request, environment and some 
 user context. And the Twig `dump()` function is supported in Development context 
