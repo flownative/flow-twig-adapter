@@ -1,0 +1,3 @@
+Flownative_TwigAdapter_Templates:
+  frontend: Neos\Cache\Frontend\PhpFrontend
+  backend: Neos\Cache\Backend\SimpleFileBackend

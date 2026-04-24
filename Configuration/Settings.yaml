@@ -1,0 +1,8 @@
+Flownative:
+  TwigAdapter:
+    defaultExtension: '.html.twig'
+    cache:
+      enabled: true
+    twigOptions:
+      autoescape: 'html'
+      strict_variables: true

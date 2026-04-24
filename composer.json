@@ -1,0 +1,16 @@
+{
+    "name": "flownative/twig-adapter",
+    "type": "neos-package",
+    "description": "Twig template engine adapter for Neos Flow",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "neos/flow": "^9.0",
+        "twig/twig": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Flownative\\TwigAdapter\\": "Classes"
+        }
+    }
+}
