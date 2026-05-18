@@ -236,6 +236,16 @@ class TwigView implements ViewInterface
 
         $this->twigEnvironment->addExtension(new FlowExtension($this->controllerContext));
 
+        $extensionClassNames = $settings['extensions'] ?? [];
+        foreach ($extensionClassNames as $className) {
+            if (class_exists($className) && Bootstrap::$staticObjectManager !== null) {
+                $extension = Bootstrap::$staticObjectManager->get($className);
+                if ($extension instanceof \Twig\Extension\ExtensionInterface) {
+                    $this->twigEnvironment->addExtension($extension);
+                }
+            }
+        }
+
         $this->twigEnvironment->addGlobal('app', $this->createAppVariable());
 
         return $this->twigEnvironment;
