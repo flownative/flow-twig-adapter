@@ -26,6 +26,11 @@ use Twig\Cache\CacheInterface;
  */
 readonly class FlowCacheAdapter implements CacheInterface
 {
+    /**
+     * The extension SimpleFileBackend gives entries of a PhpFrontend.
+     */
+    private const CACHE_ENTRY_FILE_EXTENSION = '.php';
+
     private string $cacheDirectory;
 
     public function __construct(
@@ -62,7 +67,7 @@ readonly class FlowCacheAdapter implements CacheInterface
 
     public function getTimestamp(string $key): int
     {
-        $filePath = $this->cacheDirectory . $key;
+        $filePath = $this->cacheDirectory . $key . self::CACHE_ENTRY_FILE_EXTENSION;
         return is_file($filePath) ? (int)filemtime($filePath) : 0;
     }
 }
