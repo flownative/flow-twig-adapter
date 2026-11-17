@@ -28,6 +28,13 @@ use Neos\Cache\Backend\SimpleFileBackend;
  * would otherwise be included halfway through being written, which surfaces as
  * a PHP ParseError or as a silently missing class.
  *
+ * When two requests compile the same template at once, both write the entry.
+ * Renaming a file over one another request is about to include can make it read
+ * as missing on shared file systems such as bind mounts. Therefore an entry with
+ * the same content is left in place, a new entry is linked into place with
+ * link(), which fails instead of replacing, and only changed content is renamed
+ * over the existing entry. Where hard links are unavailable, rename() is used.
+ *
  * On Windows, rename() over an existing open file can fail. If publishing keeps
  * failing, writing falls back to the base class, which trades atomicity for a
  * working cache.
@@ -52,6 +59,17 @@ class AtomicSimpleFileBackend extends SimpleFileBackend
      */
     protected function writeCacheFile(string $cacheEntryPathAndFilename, string $data): bool
     {
+        if ($this->entryHolds($cacheEntryPathAndFilename, $data)) {
+            // Twig's auto_reload compares this time with its sources, so a stale one recompiles on every request.
+            @touch($cacheEntryPathAndFilename);
+            clearstatcache(true, $cacheEntryPathAndFilename);
+            return true;
+        }
+
+        if ($this->linkNewEntry($cacheEntryPathAndFilename, $data) || $this->entryHolds($cacheEntryPathAndFilename, $data)) {
+            return true;
+        }
+
         for ($attempt = 0; $attempt < 3; $attempt++) {
             $temporaryPathAndFilename = $this->temporaryPathAndFilename($cacheEntryPathAndFilename);
             $numberOfBytesWritten = @file_put_contents($temporaryPathAndFilename, $data);
@@ -82,6 +100,29 @@ class AtomicSimpleFileBackend extends SimpleFileBackend
                 @unlink($pathAndFilename);
             }
         }
+    }
+
+    /**
+     * Publishes an entry which does not exist yet. Returns false if the entry
+     * exists already or the file system does not support hard links.
+     */
+    private function linkNewEntry(string $cacheEntryPathAndFilename, string $data): bool
+    {
+        $temporaryPathAndFilename = $this->temporaryPathAndFilename($cacheEntryPathAndFilename);
+        $linked = @file_put_contents($temporaryPathAndFilename, $data) === strlen($data)
+            && @link($temporaryPathAndFilename, $cacheEntryPathAndFilename);
+        @unlink($temporaryPathAndFilename);
+        clearstatcache(true, $cacheEntryPathAndFilename);
+
+        return $linked;
+    }
+
+    /**
+     * @phpstan-impure
+     */
+    private function entryHolds(string $cacheEntryPathAndFilename, string $data): bool
+    {
+        return is_file($cacheEntryPathAndFilename) && @file_get_contents($cacheEntryPathAndFilename) === $data;
     }
 
     /**
