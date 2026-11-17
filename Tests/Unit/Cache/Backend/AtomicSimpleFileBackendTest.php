@@ -68,9 +68,40 @@ class AtomicSimpleFileBackendTest extends TestCase
     }
 
     /** @test */
+    public function writingTheSameContentAgainKeepsTheFileAndRefreshesItsModificationTime(): void
+    {
+        $this->backend->set('entry', 'some data');
+        $entryPathAndFilename = $this->cacheDirectory . 'entry';
+        touch($entryPathAndFilename, time() - 3600);
+        clearstatcache(true, $entryPathAndFilename);
+        $inode = fileinode($entryPathAndFilename);
+
+        $this->backend->set('entry', 'some data');
+
+        clearstatcache(true, $entryPathAndFilename);
+        self::assertSame($inode, fileinode($entryPathAndFilename));
+        self::assertGreaterThan(time() - 60, filemtime($entryPathAndFilename));
+    }
+
+    /** @test */
+    public function anEntryAnotherProcessCompletedIsLeftInPlaceAndCountsAsWritten(): void
+    {
+        $entryPathAndFilename = $this->cacheDirectory . 'entry';
+        file_put_contents($entryPathAndFilename, 'some data');
+        $inode = fileinode($entryPathAndFilename);
+
+        self::assertTrue($this->callWriteCacheFile($entryPathAndFilename, 'some data'));
+
+        clearstatcache(true, $entryPathAndFilename);
+        self::assertSame($inode, fileinode($entryPathAndFilename));
+    }
+
+    /** @test */
     public function writingAnEntryLeavesNoTemporaryFilesBehind(): void
     {
         $this->backend->set('entry', 'some data');
+        $this->backend->set('entry', 'some data');
+        $this->backend->set('entry', 'other data');
 
         self::assertSame([], glob($this->cacheDirectory . '.*.tmp') ?: []);
     }
@@ -92,5 +123,10 @@ class AtomicSimpleFileBackendTest extends TestCase
         self::assertFileDoesNotExist($abandonedTemporaryFile);
         self::assertFileExists($recentTemporaryFile);
         self::assertTrue($this->backend->has('entry'));
+    }
+
+    private function callWriteCacheFile(string $cacheEntryPathAndFilename, string $data): bool
+    {
+        return (fn (): bool => $this->writeCacheFile($cacheEntryPathAndFilename, $data))->call($this->backend);
     }
 }
